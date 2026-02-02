@@ -15,9 +15,10 @@ const int ldrs_pin[] = {A0, A1, A2, A3};
 
 // false = não detectou laser; true = detectou
 bool detectou[QTDE_LDR] = {false, false, false, false};
+bool travado[QTDE_SERVOS] = {false, false, false, false};
 
 int valores_ldr[QTDE_LDR];
-
+ 
 struct ServoConfig{
     VarSpeedServo servo;
     int pin;
@@ -44,20 +45,21 @@ void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max,
     servoConfig.servo.attach(pin);
     servoConfig.servo.write(ang_inicial, velocidade);
 
+    delay(300);
 }
 
 void setup(){
 
     // configura os LDRs
     for(int i = 0; i <  QTDE_LDR; i++){
-        pinMode(ldrs_pin[0], INPUT);
+        pinMode(ldrs_pin[i], INPUT);
     }
 
     // configura os servos
-    setupServo(cabeca, PIN_CABECA, 0, 90, 45, 25);
-    setupServo(asa_esq, PIN_ASA_ESQ, 0, 45, 0);
-    setupServo(asa_dir, PIN_ASA_DIR, 0, 45, 0);
-    setupServo(tronco, PIN_TRONCO, 0, 180, 90, 15);
+    setupServo(cabeca, PIN_CABECA, 0, 90, 0, 35);
+    setupServo(asa_esq, PIN_ASA_ESQ, 0, 45, 0, 30);
+    setupServo(asa_dir, PIN_ASA_DIR, 0, 45, 0, 30);
+    setupServo(tronco, PIN_TRONCO, 0, 90, 0, 35);
 
     Serial.begin(9600);
 }
@@ -65,11 +67,16 @@ void setup(){
 void loop(){
 
     lerLdr();
-    imprimeLdr();
+    imprimeLdr(); //para debug
     verificaLdr();
 
-   
 
+    moverServo(cabeca);
+    moverServo(asa_esq);
+    moverServo(asa_dir);
+    moverServo(tronco);   
+
+    delay(1000);
 }
 
 void lerLdr(){
@@ -94,4 +101,33 @@ void imprimeLdr(){
     }
 
     Serial.println();
+}
+
+void moverServo(ServoConfig &servo){
+
+    if(servo.ang_atual >= servo.ang_max){
+        //servo.ang_atual = servo.ang_max - 1;
+        servo.servo.write(servo.ang_min, servo.velocidade, false);
+        servo.ang_atual = servo.ang_min;
+
+    } else if(servo.ang_atual <= servo.ang_min){
+        //servo.ang_atual = servo.ang_min + 1;
+        servo.servo.write(servo.ang_max, servo.velocidade, false);
+        servo.ang_atual = servo.ang_max;
+
+    } else{
+        int prox_ang;
+
+        if(servo.ang_atual - servo.ang_min < servo.ang_max - servo.ang_atual){
+            prox_ang = servo.ang_atual + 1;
+
+        } else{
+            prox_ang = servo.ang_atual - 1;
+        }
+
+        servo.servo.write(prox_ang, servo.velocidade, false);
+        servo.ang_atual = prox_ang;
+
+    }
+
 }
