@@ -18,7 +18,7 @@ const int servos_pin[] = {2, 3, 4, 5};
 int pos_iniciais[] = {45, 0, 0, 90}; // pode ser mudado depois
 int valores_ldr[QTDE_LDR];
 
-//Servo servos[QTDE_SERVOS];
+Servo servos[QTDE_SERVOS];
 
 // false = não detectou laser; true = detectou
 bool detectou[QTDE_LDR] = {false, false, false, false};
@@ -31,14 +31,12 @@ void setup(){
 
     
     for(int i = 0; i <  QTDE_SERVOS; i++){
-        /*servos[i].attach(servos_pin[i]);
-        servos[i].write(pos_iniciais[i]);*/
-        pinMode(servos_pin[i], OUTPUT);
-        digitalWrite(servos_pin[i], HIGH);
+        servos[i].attach(servos_pin[i]);
+        servos[i].write(pos_iniciais[i]);
     }
 
-
     Serial.begin(9600);
+  
 
 }
 
@@ -50,9 +48,10 @@ void loop(){
 
     for(int i = 0; i < QTDE_SERVOS; i++){ // será necessário modificar no futuro
       if(detectou[i]){
-      	digitalWrite(servos_pin[i], LOW);
+
       }
     }
+
 }
 
 void lerLdr(){
@@ -63,7 +62,7 @@ void lerLdr(){
 
 void verificaLdr(){
     for(int i = 0; i < QTDE_LDR; i++){
-        if(valores_ldr[i] = VALOR_LDR)
+        if(valores_ldr[i] <= VALOR_LDR)
             detectou[i] = true;
     }
 }
@@ -77,4 +76,14 @@ void imprimeLdr(){
     }
 
     Serial.println();
+}
+
+void movimentaServo(int servo_index, int angulo){
+    if(servo_index < 0 || servo_index >= QTDE_SERVOS){
+        Serial.println("erro: indice inválido");
+    } 
+     
+    int angulo = constraint(angulo, 0, 180);
+    servos[servo_index].write(angulo);
+
 }
