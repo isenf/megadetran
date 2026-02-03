@@ -4,6 +4,7 @@
 #define QTDE_SERVOS 4
 #define VALOR_LDR 200
 #define VELOC_PADRAO 30
+#define VELOC_TRAV 80
 
 #define PIN_CABECA 2
 #define PIN_ASA_ESQ 3
@@ -70,11 +71,19 @@ void loop(){
     imprimeLdr(); //para debug
     verificaLdr();
 
+    for(int i = 0; i < QTDE_LDR; i ++){
+        if(detectou[i]){
+            travarServo(i);
+            detectou[i] = false;    // modifica somente para não ficar executando travarServo todo loop
+        }
+    }
 
-    moverServo(cabeca);
-    moverServo(asa_esq);
-    moverServo(asa_dir);
-    moverServo(tronco);   
+
+
+    if(!travado[0]) moverServo(cabeca);
+    if(!travado[1]) moverServo(asa_esq);
+    if(!travado[2]) moverServo(asa_dir);
+    if(!travado[3]) moverServo(tronco);   
 
     delay(1000);
 }
@@ -105,6 +114,8 @@ void imprimeLdr(){
 
 void moverServo(ServoConfig &servo){
 
+    int incremento = 5;
+
     if(servo.ang_atual >= servo.ang_max){
         //servo.ang_atual = servo.ang_max - 1;
         servo.servo.write(servo.ang_min, servo.velocidade, false);
@@ -119,14 +130,45 @@ void moverServo(ServoConfig &servo){
         int prox_ang;
 
         if(servo.ang_atual - servo.ang_min < servo.ang_max - servo.ang_atual){
-            prox_ang = servo.ang_atual + 1;
+            prox_ang = servo.ang_atual + incremento;
 
         } else{
-            prox_ang = servo.ang_atual - 1;
+            prox_ang = servo.ang_atual - incremento;
         }
 
         servo.servo.write(prox_ang, servo.velocidade, false);
         servo.ang_atual = prox_ang;
+
+    }
+}
+
+void travarServo(int index){
+    
+    if(index >= 0 && index < QTDE_SERVOS && !travado[index]){
+        travado[index] = true;
+
+        switch(index){
+            case 0:
+                cabeca.servo.write(cabeca.ang_inicial, VELOC_TRAV, false);
+                cabeca.ang_atual = cabeca.ang_inicial;
+                break;
+
+            case 1:
+                asa_esq.servo.write(asa_esq.ang_inicial, VELOC_TRAV, false);
+                asa_esq.ang_atual = asa_esq.ang_inicial;
+                break;
+
+            case 2:
+                asa_dir.servo.write(asa_dir.ang_inicial, VELOC_TRAV, false);
+                asa_dir.ang_atual = asa_dir.ang_inicial;
+                break;
+
+            case 3:
+                tronco.servo.write(tronco.ang_inicial, VELOC_TRAV, false);
+                tronco.ang_atual = tronco.ang_inicial;
+                break;
+        }
+
 
     }
 
