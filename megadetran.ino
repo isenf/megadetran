@@ -11,6 +11,8 @@
 #define PIN_ASA_DIR 4
 #define PIN_TRONCO 5
 #define PIN_RESET 25
+#define PIN_OLHOD 7
+#define PIN_OLHOE 6
 
 // ordem: cabeça, asa_esq, asa_dir, tronco
 const int ldrs_pin[] = {A0, A1, A2, A3};
@@ -20,7 +22,9 @@ bool detectou[QTDE_LDR] = {false, false, false, false};
 bool travado[QTDE_SERVOS] = {false, false, false, false};
 
 int valores_ldr[QTDE_LDR];
- 
+int val_leds = 255;
+int count = 4;
+
 struct ServoConfig{
     VarSpeedServo servo;
     int pin;
@@ -69,6 +73,10 @@ void setup(){
     posInicial();
 
     pinMode(PIN_RESET, INPUT_PULLUP);
+    pinMode(PIN_OLHOE, OUTPUT);
+    pinMode(PIN_OLHOD, OUTPUT);
+
+    acendeLeds(count);
 
     Serial.begin(9600);
 }
@@ -83,6 +91,11 @@ void loop(){
 
     for(int i = 0; i < QTDE_LDR; i ++){
         if(detectou[i]){
+            if(!travado[i]){ 
+                count--;
+                acendeLeds(count);
+            }
+            
             travarServo(i);
             detectou[i] = false;    // modifica somente para não ficar executando travarServo todo loop
         }
@@ -179,12 +192,22 @@ void travarServo(int index){
     }
 }
 
+void acendeLeds(int count){
+    val_leds = map(count, 0, 4, 0, 255);
+
+    analogWrite(PIN_OLHOE, val_leds);
+    analogWrite(PIN_OLHOD, val_leds);
+}
+
 void reset(){
     for(int i = 0; i < QTDE_LDR; i++){
         travado[i] = false;
     }
 
     posInicial();
+
+    count = 4;
+    acendeLeds(count);
 
     delay(2000);    // delay para simulação
 }
