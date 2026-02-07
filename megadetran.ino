@@ -25,6 +25,14 @@ int valores_ldr[QTDE_LDR];
 int val_leds = 255;
 int count = 4;
 
+// ordem: vermelho, verde, azul
+const int led_rgb[] = {8, 9, 10};
+int valores_rgb[] = {255, 0, 0};
+
+int fase_rgb = 0;
+int passo_rgb = 0;
+unsigned int tempo_ant_rgb = 0;
+
 struct ServoConfig{
     VarSpeedServo servo;
     int pin;
@@ -105,6 +113,8 @@ void loop(){
     if(!travado[1]) moverServo(asa_esq);
     if(!travado[2]) moverServo(asa_dir);
     if(!travado[3]) moverServo(tronco); 
+
+    animaRgb();
 
     delay(1000);
 }
@@ -199,6 +209,82 @@ void acendeLeds(int count){
     analogWrite(PIN_OLHOD, val_leds);
 }
 
+void acendeRgb(int verm, int verd, int azul){
+    analogWrite(led_rgb[0], verm);
+    analogWrite(led_rgb[1], verd);
+    analogWrite(led_rgb[2], azul);
+
+}
+
+void animaRgb(){
+
+    if(count == 0){
+        acendeRgb(0, 0, 0);
+        return;
+    }
+    
+    if(millis() - tempo_ant_rgb < 50) return;
+
+    int verm, verd, azul = 255;
+
+    switch(fase_rgb){
+
+        case 0:
+            passo_rgb += 5;
+
+            if(passo_rgb >= 50){
+                passo_rgb = 50;
+                fase_rgb = 1;
+            }
+
+            verm = 255;
+            verd = passo_rgb;
+            break;
+        
+        case 1:
+
+            passo_rgb += 5;
+
+            if(passo_rgb >= 255){
+                passo_rgb = 255;
+                fase_rgb = 2;
+            }
+
+            verm = 255;
+            verd = passo_rgb;
+            break;
+
+        case 2:
+            passo_rgb -= 5;
+
+            if(passo_rgb <= 50){
+                passo_rgb = 50;
+                fase_rgb = 3;
+            }
+
+            verm = 255;
+            verd = passo_rgb;
+            break;
+
+        case 3:
+            passo_rgb -= 5;
+
+            if(passo_rgb  <= 0){
+                passo_rgb = 0;
+                fase_rgb = 0;
+            }
+
+            verm = 255;
+            verd = passo_rgb;
+            break;
+
+    }
+
+    acendeRgb(verm, verd, azul);
+
+}
+
+
 void reset(){
     for(int i = 0; i < QTDE_LDR; i++){
         travado[i] = false;
@@ -208,6 +294,10 @@ void reset(){
 
     count = 4;
     acendeLeds(count);
+
+    fase_rgb = 0;
+    passo_rgb = 0;
+    acendeRgb(255, 0, 0);
 
     delay(2000);    // delay para simulação
 }
