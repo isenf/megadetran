@@ -10,6 +10,7 @@
 #define PIN_ASA_ESQ 3
 #define PIN_ASA_DIR 4
 #define PIN_TRONCO 5
+#define PIN_RESET 25
 
 // ordem: cabeça, asa_esq, asa_dir, tronco
 const int ldrs_pin[] = {A0, A1, A2, A3};
@@ -44,9 +45,13 @@ void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max,
     servoConfig.velocidade = velocidade;
 
     servoConfig.servo.attach(pin);
-    servoConfig.servo.write(ang_inicial, velocidade);
+}
 
-    delay(300);
+void posInicial(){
+    cabeca.servo.write(cabeca.ang_inicial, cabeca.velocidade, false);
+    asa_esq.servo.write(asa_esq.ang_inicial, asa_esq.velocidade, false);
+    asa_dir.servo.write(asa_dir.ang_inicial, asa_dir.velocidade, false);
+    tronco.servo.write(tronco.ang_inicial, tronco.velocidade, false);
 }
 
 void setup(){
@@ -61,11 +66,16 @@ void setup(){
     setupServo(asa_esq, PIN_ASA_ESQ, 0, 45, 0, 30);
     setupServo(asa_dir, PIN_ASA_DIR, 0, 45, 0, 30);
     setupServo(tronco, PIN_TRONCO, 0, 90, 0, 35);
+    posInicial();
+
+    pinMode(PIN_RESET, INPUT_PULLUP);
 
     Serial.begin(9600);
 }
 
 void loop(){
+
+    if(digitalRead(PIN_RESET) == 0) reset();
 
     lerLdr();
     imprimeLdr(); //para debug
@@ -78,12 +88,10 @@ void loop(){
         }
     }
 
-
-
     if(!travado[0]) moverServo(cabeca);
     if(!travado[1]) moverServo(asa_esq);
     if(!travado[2]) moverServo(asa_dir);
-    if(!travado[3]) moverServo(tronco);   
+    if(!travado[3]) moverServo(tronco); 
 
     delay(1000);
 }
@@ -168,8 +176,15 @@ void travarServo(int index){
                 tronco.ang_atual = tronco.ang_inicial;
                 break;
         }
+    }
+}
 
-
+void reset(){
+    for(int i = 0; i < QTDE_LDR; i++){
+        travado[i] = false;
     }
 
+    posInicial();
+
+    delay(2000);    // delay para simulação
 }
