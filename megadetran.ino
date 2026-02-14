@@ -1,5 +1,10 @@
 #include <VarSpeedServo.h>
 
+#define CABECA 0
+#define ASA_ESQ 1
+#define ASA_DIR 2
+#define TRONCO 3
+
 #define QTDE_LDR 4
 #define QTDE_SERVOS 4
 #define VALOR_LDR 200
@@ -109,10 +114,10 @@ void loop(){
         }
     }
 
-    if(!travado[0]) moverServo(cabeca);
-    if(!travado[1]) moverServo(asa_esq);
-    if(!travado[2]) moverServo(asa_dir);
-    if(!travado[3]) moverServo(tronco); 
+    if(!travado[CABECA]) moverServo(cabeca);
+    if(!travado[ASA_ESQ]) moverServo(asa_esq);
+    if(!travado[ASA_DIR]) moverServo(asa_dir);
+    if(!travado[TRONCO]) moverServo(tronco); 
 
     animaRgb();
 
@@ -179,22 +184,22 @@ void travarServo(int index){
         travado[index] = true;
 
         switch(index){
-            case 0:
+            case CABECA:
                 cabeca.servo.write(cabeca.ang_inicial, VELOC_TRAV, false);
                 cabeca.ang_atual = cabeca.ang_inicial;
                 break;
 
-            case 1:
+            case ASA_ESQ:
                 asa_esq.servo.write(asa_esq.ang_inicial, VELOC_TRAV, false);
                 asa_esq.ang_atual = asa_esq.ang_inicial;
                 break;
 
-            case 2:
+            case ASA_DIR:
                 asa_dir.servo.write(asa_dir.ang_inicial, VELOC_TRAV, false);
                 asa_dir.ang_atual = asa_dir.ang_inicial;
                 break;
 
-            case 3:
+            case TRONCO:
                 tronco.servo.write(tronco.ang_inicial, VELOC_TRAV, false);
                 tronco.ang_atual = tronco.ang_inicial;
                 break;
