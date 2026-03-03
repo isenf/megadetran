@@ -10,6 +10,8 @@
 #define VALOR_LDR 200
 #define VELOC_PADRAO 30
 #define VELOC_TRAV 80
+#define INTERV_PADRAO 200
+#define INTERV_LDR 100 
 
 #define PIN_CABECA 2
 #define PIN_ASA_ESQ 3
@@ -21,6 +23,7 @@
 
 // ordem: cabeça, asa_esq, asa_dir, tronco
 const int ldrs_pin[] = {A0, A1, A2, A3};
+unsigned long tempo_anterior_ldr = 0;
 
 // false = não detectou laser; true = detectou
 bool detectou[QTDE_LDR] = {false, false, false, false};
@@ -36,7 +39,7 @@ int valores_rgb[] = {255, 0, 0};
 
 int fase_rgb = 0;
 int passo_rgb = 0;
-unsigned int tempo_ant_rgb = 0;
+unsigned long tempo_ant_rgb = 0;
 
 struct ServoConfig{
     VarSpeedServo servo;
@@ -46,12 +49,15 @@ struct ServoConfig{
     int ang_inicial;
     int ang_atual;
     int velocidade;
+
+    unsigned long tempo_anterior;
+    unsigned long intervalo;
 };
 
 ServoConfig cabeca, asa_esq, asa_dir, tronco;
 
 void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max, 
-                int ang_inicial, int velocidade = VELOC_PADRAO){
+                int ang_inicial, int velocidade = VELOC_PADRAO, int intervalo = INTERV_PADRAO){
     // função criada para configurar os servos e inicializar
 
     servoConfig.pin = pin;
@@ -60,6 +66,9 @@ void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max,
     servoConfig.ang_inicial = ang_inicial;
     servoConfig.ang_atual = ang_inicial;
     servoConfig.velocidade = velocidade;
+
+    servoConfig.tempo_anterior = 0;
+    servoConfig.intervalo = intervalo;
 
     servoConfig.servo.attach(pin);
 }
@@ -79,10 +88,10 @@ void setup(){
     }
 
     // configura os servos
-    setupServo(cabeca, PIN_CABECA, 0, 90, 0, 35);
-    setupServo(asa_esq, PIN_ASA_ESQ, 0, 45, 0, 30);
-    setupServo(asa_dir, PIN_ASA_DIR, 0, 45, 0, 30);
-    setupServo(tronco, PIN_TRONCO, 0, 90, 0, 35);
+    setupServo(cabeca, PIN_CABECA, 0, 90, 0, 35, 1600);
+    setupServo(asa_esq, PIN_ASA_ESQ, 0, 45, 0, 30, 800);
+    setupServo(asa_dir, PIN_ASA_DIR, 0, 45, 0, 30, 800);
+    setupServo(tronco, PIN_TRONCO, 0, 90, 0, 35, 1600);
     posInicial();
 
     pinMode(PIN_RESET, INPUT_PULLUP);
@@ -121,16 +130,20 @@ void loop(){
 
     animaRgb();
 
-    delay(1000);
 }
 
 void lerLdr(){
+
+    if(millis() - tempo_anterior_ldr < INTERV_LDR) return;
+    tempo_anterior_ldr = millis();
+
     for(int i = 0; i < QTDE_LDR; i++){
         valores_ldr[i] = analogRead(ldrs_pin[i]);
     }
 }
 
 void verificaLdr(){
+
     for(int i = 0; i < QTDE_LDR; i++){
         if(valores_ldr[i] <= VALOR_LDR)
             detectou[i] = true;
@@ -150,15 +163,17 @@ void imprimeLdr(){
 
 void moverServo(ServoConfig &servo){
 
+    if(millis() - servo.tempo_anterior < servo.intervalo) return;
+
+    servo.tempo_anterior = millis();
+
     int incremento = 5;
 
     if(servo.ang_atual >= servo.ang_max){
-        //servo.ang_atual = servo.ang_max - 1;
         servo.servo.write(servo.ang_min, servo.velocidade, false);
         servo.ang_atual = servo.ang_min;
 
     } else if(servo.ang_atual <= servo.ang_min){
-        //servo.ang_atual = servo.ang_min + 1;
         servo.servo.write(servo.ang_max, servo.velocidade, false);
         servo.ang_atual = servo.ang_max;
 
@@ -229,8 +244,9 @@ void animaRgb(){
     }
     
     if(millis() - tempo_ant_rgb < 50) return;
+    tempo_ant_rgb = millis();
 
-    int verm, verd, azul = 255;
+    int verm = 255, verd = 0, azul = 0;
 
     switch(fase_rgb){
 
