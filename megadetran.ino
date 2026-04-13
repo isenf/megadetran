@@ -25,11 +25,6 @@
 const int ldrs_pin[] = {A0, A1, A2, A3};
 unsigned long tempo_anterior_ldr = 0;
 
-// false = não detectou laser; true = detectou
-bool detectou[QTDE_LDR] = {false, false, false, false};
-bool travado[QTDE_SERVOS] = {false, false, false, false};
-
-int valores_ldr[QTDE_LDR];
 int val_leds = 255;
 int count = 4;
 
@@ -52,9 +47,21 @@ struct ServoConfig{
 
     unsigned long tempo_anterior;
     unsigned long intervalo;
+    bool travado;
 };
 
-ServoConfig cabeca, asa_esq, asa_dir, tronco;
+ServoConfig servos[4];
+
+struct LdrConfig{
+    int pin;
+    int valor;
+    bool detectou;
+
+    unsigned long tempo_anterior;
+};
+
+LdrConfig ldrs[4];
+
 
 void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max, 
                 int ang_inicial, int velocidade = VELOC_PADRAO, int intervalo = INTERV_PADRAO){
@@ -70,28 +77,38 @@ void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max,
     servoConfig.tempo_anterior = 0;
     servoConfig.intervalo = intervalo;
 
+    servoConfig.travado = false;
+
     servoConfig.servo.attach(pin);
 }
 
+void setupLdr(LdrConfig &ldr, int pin){
+    ldr.pin = pin;
+    ldr.valor = 0;
+    ldr.detectou = false;
+
+    pinMode(pin, INPUT);
+}
+
 void posInicial(){
-    cabeca.servo.write(cabeca.ang_inicial, cabeca.velocidade, false);
-    asa_esq.servo.write(asa_esq.ang_inicial, asa_esq.velocidade, false);
-    asa_dir.servo.write(asa_dir.ang_inicial, asa_dir.velocidade, false);
-    tronco.servo.write(tronco.ang_inicial, tronco.velocidade, false);
+    servos[CABECA].servo.write(servos[CABECA].ang_inicial, servos[CABECA].velocidade, false);
+    servos[ASA_ESQ].servo.write(servos[ASA_ESQ].ang_inicial, servos[ASA_ESQ].velocidade, false);
+    servos[ASA_DIR].servo.write(servos[ASA_DIR].ang_inicial, servos[ASA_DIR].velocidade, false);
+    servos[TRONCO].servo.write(servos[TRONCO].ang_inicial, servos[TRONCO].velocidade, false);
 }
 
 void setup(){
 
     // configura os LDRs
     for(int i = 0; i <  QTDE_LDR; i++){
-        pinMode(ldrs_pin[i], INPUT);
+        setupLdr(ldrs[i], ldrs_pin[i]);
     }
 
     // configura os servos
-    setupServo(cabeca, PIN_CABECA, 0, 90, 0, 35, 1600);
-    setupServo(asa_esq, PIN_ASA_ESQ, 0, 45, 0, 30, 800);
-    setupServo(asa_dir, PIN_ASA_DIR, 0, 45, 0, 30, 800);
-    setupServo(tronco, PIN_TRONCO, 0, 90, 0, 35, 1600);
+    setupServo(servos[CABECA], PIN_CABECA, 0, 90, 0, 35, 1600);
+    setupServo(servos[ASA_ESQ], PIN_ASA_ESQ, 0, 45, 0, 30, 800);
+    setupServo(servos[ASA_DIR], PIN_ASA_DIR, 0, 45, 0, 30, 800);
+    setupServo(servos[TRONCO], PIN_TRONCO, 0, 90, 0, 35, 1600);
     posInicial();
 
     pinMode(PIN_RESET, INPUT_PULLUP);
@@ -105,28 +122,29 @@ void setup(){
 
 void loop(){
 
+    
     if(digitalRead(PIN_RESET) == 0) reset();
 
     lerLdr();
-    imprimeLdr(); //para debug
+    //imprimeLdr(); //para debug
     verificaLdr();
 
     for(int i = 0; i < QTDE_LDR; i ++){
-        if(detectou[i]){
-            if(!travado[i]){ 
+        if(ldrs[i].detectou){
+            if(!servos[i].travado){ 
                 count--;
                 acendeLeds(count);
             }
             
             travarServo(i);
-            detectou[i] = false;    // modifica somente para não ficar executando travarServo todo loop
+            ldrs[i].detectou = false;    // modifica somente para não ficar executando travarServo todo loop
         }
     }
 
-    if(!travado[CABECA]) moverServo(cabeca);
-    if(!travado[ASA_ESQ]) moverServo(asa_esq);
-    if(!travado[ASA_DIR]) moverServo(asa_dir);
-    if(!travado[TRONCO]) moverServo(tronco); 
+    if(!servos[CABECA].travado) moverServo(servos[CABECA]);
+    if(!servos[ASA_ESQ].travado) moverServo(servos[ASA_ESQ]);
+    if(!servos[ASA_DIR].travado) moverServo(servos[ASA_DIR]);
+    if(!servos[TRONCO].travado) moverServo(servos[TRONCO]); 
 
     animaRgb();
 
@@ -138,24 +156,24 @@ void lerLdr(){
     tempo_anterior_ldr = millis();
 
     for(int i = 0; i < QTDE_LDR; i++){
-        valores_ldr[i] = analogRead(ldrs_pin[i]);
+        ldrs[i].valor = analogRead(ldrs_pin[i]);
     }
 }
 
-void verificaLdr(){
+void verificaLdr(){ //
 
     for(int i = 0; i < QTDE_LDR; i++){
-        if(valores_ldr[i] <= VALOR_LDR)
-            detectou[i] = true;
+        if(ldrs[i].valor <= VALOR_LDR)
+            ldrs[i].detectou = true;
     }
 }
 
-void imprimeLdr(){
+void imprimeLdr(){ //
     for(int i = 0; i < QTDE_LDR; i++){
         Serial.print("LDR");
         Serial.print(i);
         Serial.print(":");
-        Serial.println(valores_ldr[i]);
+        Serial.println(ldrs[i].valor);
     }
 
     Serial.println();
@@ -195,28 +213,28 @@ void moverServo(ServoConfig &servo){
 
 void travarServo(int index){
     
-    if(index >= 0 && index < QTDE_SERVOS && !travado[index]){
-        travado[index] = true;
+    if(index >= 0 && index < QTDE_SERVOS && !servos[index].travado){
+        servos[index].travado = true;
 
         switch(index){
             case CABECA:
-                cabeca.servo.write(cabeca.ang_inicial, VELOC_TRAV, false);
-                cabeca.ang_atual = cabeca.ang_inicial;
+                servos[CABECA].servo.write(servos[CABECA].ang_inicial, VELOC_TRAV, false);
+                servos[CABECA].ang_atual = servos[CABECA].ang_inicial;
                 break;
 
             case ASA_ESQ:
-                asa_esq.servo.write(asa_esq.ang_inicial, VELOC_TRAV, false);
-                asa_esq.ang_atual = asa_esq.ang_inicial;
+                servos[ASA_ESQ].servo.write(servos[ASA_ESQ].ang_inicial, VELOC_TRAV, false);
+                servos[ASA_ESQ].ang_atual = servos[ASA_ESQ].ang_inicial;
                 break;
 
             case ASA_DIR:
-                asa_dir.servo.write(asa_dir.ang_inicial, VELOC_TRAV, false);
-                asa_dir.ang_atual = asa_dir.ang_inicial;
+                servos[ASA_DIR].servo.write(servos[ASA_DIR].ang_inicial, VELOC_TRAV, false);
+                servos[ASA_DIR].ang_atual = servos[ASA_DIR].ang_inicial;
                 break;
 
             case TRONCO:
-                tronco.servo.write(tronco.ang_inicial, VELOC_TRAV, false);
-                tronco.ang_atual = tronco.ang_inicial;
+                servos[TRONCO].servo.write(servos[TRONCO].ang_inicial, VELOC_TRAV, false);
+                servos[TRONCO].ang_atual = servos[TRONCO].ang_inicial;
                 break;
         }
     }
@@ -308,7 +326,7 @@ void animaRgb(){
 
 void reset(){
     for(int i = 0; i < QTDE_LDR; i++){
-        travado[i] = false;
+        servos[i].travado = false;
     }
 
     posInicial();
