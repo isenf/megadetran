@@ -1,10 +1,12 @@
 #include <VarSpeedServo.h>
 
+// indices para as partes do dragão
 #define CABECA 0
 #define ASA_ESQ 1
 #define ASA_DIR 2
 #define TRONCO 3
 
+// variáveis constantes
 #define QTDE_LDR 4
 #define QTDE_SERVOS 4
 #define VALOR_LDR 200
@@ -13,6 +15,7 @@
 #define INTERV_PADRAO 200
 #define INTERV_LDR 100 
 
+// variáveis com os pinos
 #define PIN_CABECA 2
 #define PIN_ASA_ESQ 3
 #define PIN_ASA_DIR 4
@@ -25,17 +28,20 @@
 const int ldrs_pin[] = {A0, A1, A2, A3};
 unsigned long tempo_anterior_ldr = 0;
 
+// variáveis para o brilho dos olhos
 int val_leds = 255;
 int count = 4;
 
-// ordem: vermelho, verde, azul
+// ordem: vermelho, verde, azul (boca)
 const int led_rgb[] = {8, 9, 10};
 int valores_rgb[] = {255, 0, 0};
 
+// variáveis de fases e transições dos leds rgb
 int fase_rgb = 0;
 int passo_rgb = 0;
 unsigned long tempo_ant_rgb = 0;
 
+/*===== struct para os servos =====*/
 struct ServoConfig{
     VarSpeedServo servo;
     int pin;
@@ -52,6 +58,7 @@ struct ServoConfig{
 
 ServoConfig servos[4];
 
+/*===== struct para os LDRs =====*/
 struct LdrConfig{
     int pin;
     int valor;
@@ -62,10 +69,9 @@ struct LdrConfig{
 
 LdrConfig ldrs[4];
 
-
+ // função criada para configurar os servos e inicializar
 void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max, 
                 int ang_inicial, int velocidade = VELOC_PADRAO, int intervalo = INTERV_PADRAO){
-    // função criada para configurar os servos e inicializar
 
     servoConfig.pin = pin;
     servoConfig.ang_min = ang_min;
@@ -82,6 +88,7 @@ void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max,
     servoConfig.servo.attach(pin);
 }
 
+// função criada para configurar e inicializar os LDRs
 void setupLdr(LdrConfig &ldr, int pin){
     ldr.pin = pin;
     ldr.valor = 0;
@@ -90,6 +97,7 @@ void setupLdr(LdrConfig &ldr, int pin){
     pinMode(pin, INPUT);
 }
 
+// configura a posição inicial dos servos
 void posInicial(){
     servos[CABECA].servo.write(servos[CABECA].ang_inicial, servos[CABECA].velocidade, false);
     servos[ASA_ESQ].servo.write(servos[ASA_ESQ].ang_inicial, servos[ASA_ESQ].velocidade, false);
@@ -121,7 +129,6 @@ void setup(){
 }
 
 void loop(){
-
     
     if(digitalRead(PIN_RESET) == 0) reset();
 
@@ -150,6 +157,7 @@ void loop(){
 
 }
 
+// le os valores dos LDRs
 void lerLdr(){
 
     if(millis() - tempo_anterior_ldr < INTERV_LDR) return;
@@ -160,7 +168,7 @@ void lerLdr(){
     }
 }
 
-void verificaLdr(){ //
+void verificaLdr(){ // verifica se o LDR detectou
 
     for(int i = 0; i < QTDE_LDR; i++){
         if(ldrs[i].valor <= VALOR_LDR)
@@ -168,7 +176,8 @@ void verificaLdr(){ //
     }
 }
 
-void imprimeLdr(){ //
+// função que imprime os valores dos LDRs
+void imprimeLdr(){
     for(int i = 0; i < QTDE_LDR; i++){
         Serial.print("LDR");
         Serial.print(i);
@@ -179,6 +188,7 @@ void imprimeLdr(){ //
     Serial.println();
 }
 
+// movimenta os servos de forma assincrona
 void moverServo(ServoConfig &servo){
 
     if(millis() - servo.tempo_anterior < servo.intervalo) return;
@@ -211,6 +221,7 @@ void moverServo(ServoConfig &servo){
     }
 }
 
+// trava um determinado servo motor
 void travarServo(int index){
     
     if(index >= 0 && index < QTDE_SERVOS && !servos[index].travado){
@@ -240,6 +251,7 @@ void travarServo(int index){
     }
 }
 
+// acende o led dos olhos usando pwm
 void acendeLeds(int count){
     val_leds = map(count, 0, 4, 0, 255);
 
@@ -247,6 +259,7 @@ void acendeLeds(int count){
     analogWrite(PIN_OLHOD, val_leds);
 }
 
+// função para acender o led RGB
 void acendeRgb(int verm, int verd, int azul){
     analogWrite(led_rgb[0], verm);
     analogWrite(led_rgb[1], verd);
@@ -254,6 +267,7 @@ void acendeRgb(int verm, int verd, int azul){
 
 }
 
+// faz o led RGB variar de vermelho -> laranja -> amarelo -> ...
 void animaRgb(){
 
     if(count == 0){
@@ -323,7 +337,7 @@ void animaRgb(){
 
 }
 
-
+// função que reseta as variáveis
 void reset(){
     for(int i = 0; i < QTDE_LDR; i++){
         servos[i].travado = false;
