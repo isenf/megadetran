@@ -1,4 +1,5 @@
 #include <VarSpeedServo.h>
+#include <AccelStepper.h>
 
 // indices para as partes do dragão
 #define CABECA 0
@@ -8,7 +9,7 @@
 
 // variáveis constantes
 #define QTDE_LDR 4
-#define QTDE_SERVOS 4
+#define QTDE_SERVOS 3
 #define VALOR_LDR 200
 #define VELOC_PADRAO 30
 #define VELOC_TRAV 80
@@ -23,6 +24,8 @@
 #define PIN_RESET 25
 #define PIN_OLHOD 7
 #define PIN_OLHOE 6
+#define PIN_STEP 22
+#define PIN_DIR 23
 
 // ordem: cabeça, asa_esq, asa_dir, tronco
 const int ldrs_pin[] = {A0, A1, A2, A3};
@@ -41,6 +44,8 @@ int fase_rgb = 0;
 int passo_rgb = 0;
 unsigned long tempo_ant_rgb = 0;
 
+AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
+
 /*===== struct para os servos =====*/
 struct ServoConfig{
     VarSpeedServo servo;
@@ -56,7 +61,7 @@ struct ServoConfig{
     bool travado;
 };
 
-ServoConfig servos[4];
+ServoConfig servos[QTDE_SERVOS]; // três servos: cabeça, asa esquerda e asa direita
 
 /*===== struct para os LDRs =====*/
 struct LdrConfig{
@@ -68,6 +73,26 @@ struct LdrConfig{
 };
 
 LdrConfig ldrs[4];
+
+struct StepperConfig{
+    int pos_atual;
+    int pos_min;
+    int pos_max;
+    int pos_inicial;
+
+    int velocidade;
+    int aceleracao;
+
+    unsigned long tempo_anterior;
+    unsigned long intervalo;
+
+    bool travado;
+    bool min_to_max; // direção do movimento
+
+    int incremento;
+};
+
+StepperConfig troncoMotor; // motor de passo do tronco
 
  // função criada para configurar os servos e inicializar
 void setupServo(ServoConfig &servoConfig, int pin, int ang_min, int ang_max, 
@@ -97,12 +122,36 @@ void setupLdr(LdrConfig &ldr, int pin){
     pinMode(pin, INPUT);
 }
 
-// configura a posição inicial dos servos
+// função para configurar o motor de passo
+void setupStepper(){    // caso haja mais de um: tornar ela genérica
+    troncoMotor.pos_min = 0;
+    troncoMotor.pos_max = 2000;
+    troncoMotor.pos_inicial = 0;
+    troncoMotor.pos_atual = 0;
+    troncoMotor.velocidade = 400;
+    troncoMotor.aceleracao = 200;
+    troncoMotor.intervalo = 50;
+    troncoMotor.tempo_anterior = 0;
+    troncoMotor.travado = false;
+    troncoMotor.min_to_max = true;
+    troncoMotor.incremento = 50;
+
+    stepper.setMaxSpeed(troncoMotor.velocidade);
+    stepper.setAcceleration(troncoMotor.aceleracao);
+    stepper.setCurrentPosition(0);
+    stepper.moveTo(troncoMotor.posicao_max);
+}
+
+// configura a posição inicial dos servos e do motor de passo
 void posInicial(){
     servos[CABECA].servo.write(servos[CABECA].ang_inicial, servos[CABECA].velocidade, false);
     servos[ASA_ESQ].servo.write(servos[ASA_ESQ].ang_inicial, servos[ASA_ESQ].velocidade, false);
     servos[ASA_DIR].servo.write(servos[ASA_DIR].ang_inicial, servos[ASA_DIR].velocidade, false);
-    servos[TRONCO].servo.write(servos[TRONCO].ang_inicial, servos[TRONCO].velocidade, false);
+
+    stepper.moveTo(troncoMotor.posicao_inicial);
+    while(stepper.distanceToGo() != 0) {
+        stepper.runSpeedToPosition();
+    }
 }
 
 void setup(){
@@ -121,9 +170,14 @@ void setup(){
     setupServo(servos[CABECA], PIN_CABECA, 0, 90, 0, 35, 1600);
     setupServo(servos[ASA_ESQ], PIN_ASA_ESQ, 0, 45, 0, 30, 800);
     setupServo(servos[ASA_DIR], PIN_ASA_DIR, 0, 45, 0, 30, 800);
-    setupServo(servos[TRONCO], PIN_TRONCO, 0, 90, 0, 35, 1600);
+
+    // configura o motor de passo
+    setupStepper();
+
+    // move para posição inicial
     posInicial();
 
+    // configura o botão de reset e o
     pinMode(PIN_RESET, INPUT_PULLUP);
     pinMode(PIN_OLHOE, OUTPUT);
     pinMode(PIN_OLHOD, OUTPUT);
