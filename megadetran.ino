@@ -112,6 +112,11 @@ void setup(){
         setupLdr(ldrs[i], ldrs_pin[i]);
     }
 
+    // configura os leds RGBs
+    for(int i = 0; i < 3; i++){
+        pinMode(led_rgb[i], OUTPUT);
+    }
+
     // configura os servos
     setupServo(servos[CABECA], PIN_CABECA, 0, 90, 0, 35, 1600);
     setupServo(servos[ASA_ESQ], PIN_ASA_ESQ, 0, 45, 0, 30, 800);
