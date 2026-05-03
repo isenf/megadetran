@@ -125,7 +125,7 @@ void setupLdr(LdrConfig &ldr, int pin){
 // função para configurar o motor de passo
 void setupStepper(){    // caso haja mais de um: tornar ela genérica
     troncoMotor.pos_min = 0;
-    troncoMotor.pos_max = 2000;
+    troncoMotor.pos_max = 100; // 200 passos -> 1 volta
     troncoMotor.pos_inicial = 0;
     troncoMotor.pos_atual = 0;
     troncoMotor.velocidade = 400;
@@ -221,7 +221,7 @@ void loop(){
     if(!servos[CABECA].travado) moverServo(servos[CABECA]);
     if(!servos[ASA_ESQ].travado) moverServo(servos[ASA_ESQ]);
     if(!servos[ASA_DIR].travado) moverServo(servos[ASA_DIR]);
-    if(!servos[TRONCO].travado) moverMotorPasso();
+    if(!troncoMotor.travado) moverMotorPasso();
 
     animaRgb();
 
