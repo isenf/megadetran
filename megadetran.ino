@@ -10,7 +10,9 @@
 // variáveis constantes
 #define QTDE_LDR 4
 #define QTDE_SERVOS 3
-#define VALOR_LDR 200
+#define MARGEM_LASER 150
+#define LIMIAR_MIN 150
+#define LIMIAR_MAX 800
 #define VELOC_PADRAO 30
 #define VELOC_TRAV 80
 #define INTERV_PADRAO 200
@@ -68,6 +70,8 @@ struct LdrConfig{
     int pin;
     int valor;
     bool detectou;
+
+    int limiar;
 
     unsigned long tempo_anterior;
 };
@@ -177,6 +181,8 @@ void setup(){
     // move para posição inicial
     posInicial();
 
+    calibrarLDR();
+
     // configura o botão de reset e o
     pinMode(PIN_RESET, INPUT_PULLUP);
     pinMode(PIN_OLHOE, OUTPUT);
@@ -227,6 +233,24 @@ void loop(){
 
 }
 
+// calibra o valor do limiar do LDR
+void calibrarLDR(){
+    const int amostras = 4;
+    
+    for(int i = 0; i < QTDE_LDR; i++){
+        unsigned long soma = 0;
+        for(int j = 0; j < amostras; j++){
+            soma += analogRead(ldrs[i].pin);
+        }
+
+        ldrs[i].limiar = (soma / amostras) - MARGEM_LASER;
+
+        if(ldrs[i].limiar < LIMIAR_MIN) ldrs[i].limiar = LIMIAR_MIN;    // considera um limiar mínimo e máximo
+        else if(ldrs[i].limiar > LIMIAR_MAX) ldrs[i].limiar = LIMIAR_MAX;
+    }
+
+}
+
 // le os valores dos LDRs
 void lerLdr(){
 
@@ -234,14 +258,14 @@ void lerLdr(){
     tempo_anterior_ldr = millis();
 
     for(int i = 0; i < QTDE_LDR; i++){
-        ldrs[i].valor = analogRead(ldrs_pin[i]);
+        ldrs[i].valor = analogRead(ldrs[i].pin);
     }
 }
 
 void verificaLdr(){ // verifica se o LDR detectou
 
     for(int i = 0; i < QTDE_LDR; i++){
-        if(ldrs[i].valor <= VALOR_LDR)
+        if(ldrs[i].valor <= ldrs[i].limiar)
             ldrs[i].detectou = true;
     }
 }
@@ -252,7 +276,9 @@ void imprimeLdr(){
         Serial.print("LDR");
         Serial.print(i);
         Serial.print(":");
-        Serial.println(ldrs[i].valor);
+        Serial.print(ldrs[i].valor);
+        Serial.print("\t\tlimiar: ");
+        Serial.println(ldrs[i].limiar);
     }
 
     Serial.println();
@@ -446,7 +472,7 @@ void animaRgb(){
 
 // função que reseta as variáveis
 void reset(){
-    for(int i = 0; i < QTDE_LDR; i++){
+    for(int i = 0; i < QTDE_SERVOS; i++){
         servos[i].travado = false;
     }
 
@@ -454,6 +480,7 @@ void reset(){
     troncoMotor.min_to_max = true;
 
     posInicial();
+    calibrarLDR();
 
     count = 4;
     acendeLeds(count);
