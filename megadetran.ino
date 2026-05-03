@@ -44,7 +44,7 @@ int fase_rgb = 0;
 int passo_rgb = 0;
 unsigned long tempo_ant_rgb = 0;
 
-AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
+AccelStepper stepper(AccelStepper::DRIVER, PIN_STEP, PIN_DIR);
 
 /*===== struct para os servos =====*/
 struct ServoConfig{
@@ -139,7 +139,7 @@ void setupStepper(){    // caso haja mais de um: tornar ela genérica
     stepper.setMaxSpeed(troncoMotor.velocidade);
     stepper.setAcceleration(troncoMotor.aceleracao);
     stepper.setCurrentPosition(0);
-    stepper.moveTo(troncoMotor.posicao_max);
+    stepper.moveTo(troncoMotor.pos_max);
 }
 
 // configura a posição inicial dos servos e do motor de passo
@@ -148,7 +148,7 @@ void posInicial(){
     servos[ASA_ESQ].servo.write(servos[ASA_ESQ].ang_inicial, servos[ASA_ESQ].velocidade, false);
     servos[ASA_DIR].servo.write(servos[ASA_DIR].ang_inicial, servos[ASA_DIR].velocidade, false);
 
-    stepper.moveTo(troncoMotor.posicao_inicial);
+    stepper.moveTo(troncoMotor.pos_inicial);
     while(stepper.distanceToGo() != 0) {
         stepper.runSpeedToPosition();
     }
@@ -197,12 +197,23 @@ void loop(){
 
     for(int i = 0; i < QTDE_LDR; i ++){
         if(ldrs[i].detectou){
-            if(!servos[i].travado){ 
-                count--;
-                acendeLeds(count);
+            if(i == TRONCO){
+                if(!troncoMotor.travado){
+                    count--;
+                    acendeLeds(count);
+                }
+
+                travarMotorPasso();
+
+            } else{
+                if(!servos[i].travado){ 
+                    count--;
+                    acendeLeds(count);
+                }
+            
+                travarServo(i);
             }
             
-            travarServo(i);
             ldrs[i].detectou = false;    // modifica somente para não ficar executando travarServo todo loop
         }
     }
@@ -210,7 +221,7 @@ void loop(){
     if(!servos[CABECA].travado) moverServo(servos[CABECA]);
     if(!servos[ASA_ESQ].travado) moverServo(servos[ASA_ESQ]);
     if(!servos[ASA_DIR].travado) moverServo(servos[ASA_DIR]);
-    if(!servos[TRONCO].travado) moverServo(servos[TRONCO]); 
+    if(!servos[TRONCO].travado) moverMotorPasso();
 
     animaRgb();
 
@@ -301,12 +312,49 @@ void travarServo(int index){
                 servos[ASA_DIR].servo.write(servos[ASA_DIR].ang_inicial, VELOC_TRAV, false);
                 servos[ASA_DIR].ang_atual = servos[ASA_DIR].ang_inicial;
                 break;
-
-            case TRONCO:
-                servos[TRONCO].servo.write(servos[TRONCO].ang_inicial, VELOC_TRAV, false);
-                servos[TRONCO].ang_atual = servos[TRONCO].ang_inicial;
-                break;
         }
+    }
+}
+
+// função para mover o motor de passo
+void moverMotorPasso(){ // pode ser tornada genérica
+    if(millis() - troncoMotor.tempo_anterior < troncoMotor.intervalo) return;
+
+    troncoMotor.tempo_anterior = millis();
+
+    if(troncoMotor.min_to_max){
+        if(troncoMotor.pos_atual + troncoMotor.incremento >= troncoMotor.pos_max){
+            stepper.moveTo(troncoMotor.pos_min);
+            troncoMotor.min_to_max = false;
+        } else{
+            stepper.move(troncoMotor.incremento);
+        }
+    } else{
+        if(troncoMotor.pos_atual - troncoMotor.incremento <= troncoMotor.pos_max){
+            stepper.moveTo(troncoMotor.pos_max);
+            troncoMotor.min_to_max = true;
+        } else{
+            stepper.move(-troncoMotor.incremento);
+        }
+
+    }
+
+    stepper.run();
+    troncoMotor.pos_atual = stepper.currentPosition();
+}
+
+// trava o motor de passo
+void travarMotorPasso(){ // pode ser tornada genérica
+    if(!troncoMotor.travado){
+        troncoMotor.travado = true;
+
+        stepper.moveTo(troncoMotor.pos_inicial);
+
+        while(stepper.distanceToGo() != 0){
+            stepper.runSpeedToPosition();
+        }
+
+        troncoMotor.pos_atual = troncoMotor.pos_atual;
     }
 }
 
@@ -401,6 +449,9 @@ void reset(){
     for(int i = 0; i < QTDE_LDR; i++){
         servos[i].travado = false;
     }
+
+    troncoMotor.travado = false;
+    troncoMotor.min_to_max = true;
 
     posInicial();
 
