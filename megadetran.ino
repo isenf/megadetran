@@ -1,5 +1,7 @@
 #include <VarSpeedServo.h>
 #include <AccelStepper.h>
+#include <DFRobotDFPlayerMini.h>
+#include <SoftwareSerial.h>
 
 // indices para as partes do dragão
 #define CABECA 0
@@ -28,6 +30,29 @@
 #define PIN_OLHOE 6
 #define PIN_STEP 22
 #define PIN_DIR 23
+
+// pino dos Df's
+#define PIN_RX1 14
+#define PIN_TX1 15  // df que toca a música tema
+#define PIN_RX2 16
+#define PIN_TX2 17  // df que toca os efeitos
+
+// objeto do Df e do Serial
+DFRobotDFPlayerMini player_tema;
+SoftwareSerial serial_tema(PIN_RX1, PIN_TX1);
+
+DFRobotDFPlayerMini player_efeitos;
+SoftwareSerial serial_efeitos(PIN_RX2, PIN_TX2);
+
+// variáveis auxiliares para música tema
+bool musica_tema = false;
+bool jogo_fim = false;
+
+/* sons no cartão:
+0001 - rugido
+0002 - dor
+0003 - doom
+0004 - asa */
 
 // ordem: cabeça, asa_esq, asa_dir, tronco
 const int ldrs_pin[] = {A0, A1, A2, A3};
@@ -76,7 +101,7 @@ struct LdrConfig{
     unsigned long tempo_anterior;
 };
 
-LdrConfig ldrs[4];
+LdrConfig ldrs[QTDE_LDR];
 
 struct StepperConfig{
     int pos_atual;
@@ -158,6 +183,29 @@ void posInicial(){
     }
 }
 
+void initDFPlayer(DFRobotDFPlayerMini &player, SoftwareSerial &serial, int volume, const char* nome){
+    for(int i = 0; i < 3; i++){
+        serial.begin(9600);
+
+        delay(500);
+
+        if(player.begin(serial)){
+            Serial.print(nome);
+            Serial.println(" inicializado com sucesso!");
+            player.volume(volume);
+            return;
+        }
+
+        Serial.print(nome);
+        Serial.print(" falhou na tentativa ");
+        Serial.println(i + 1);
+        delay(1000);
+    }
+
+    Serial.print(nome);
+    Serial.println(" - falhou em todas as tentativas...");
+}
+
 void setup(){
 
     // configura os LDRs
@@ -191,11 +239,25 @@ void setup(){
     acendeLeds(count);
 
     Serial.begin(9600);
+
+    // configurações dos Df's
+    serial_tema.begin(9600);
+    serial_efeitos.begin(9600);
+
+    initDFPlayer(player_tema, serial_tema, 5, "DfPlayer Tema");
+    initDFPlayer(player_efeitos, serial_efeitos, 5, "DfPlayer Efeitos");
+
 }
 
 void loop(){
     
     if(digitalRead(PIN_RESET) == 0) reset();
+
+    if(!musica_tema && !jogo_fim){
+        player_tema.play(3);
+        player_tema.enableLoop();
+        musica_tema = true;
+    }
 
     lerLdr();
     //imprimeLdr(); //para debug
@@ -207,6 +269,7 @@ void loop(){
                 if(!troncoMotor.travado){
                     count--;
                     acendeLeds(count);
+                    tocarEfeito(i);
                 }
 
                 travarMotorPasso();
@@ -215,12 +278,15 @@ void loop(){
                 if(!servos[i].travado){ 
                     count--;
                     acendeLeds(count);
+                    tocarEfeito(i);
                 }
             
                 travarServo(i);
             }
             
             ldrs[i].detectou = false;    // modifica somente para não ficar executando travarServo todo loop
+
+            if(count == 0 && !jogo_fim) finalizarLoopTema();
         }
     }
 
@@ -231,6 +297,23 @@ void loop(){
 
     animaRgb();
 
+}
+
+void tocarEfeito(int index){
+    switch(index){
+        case CABECA:
+            player_efeitos.play(1); // rugido
+            break;
+
+        case ASA_ESQ:
+        case ASA_DIR:
+            player_efeitos.play(4); // asa
+            break;
+
+        case TRONCO:
+            player_efeitos.play(2); // dor
+            break;
+    }
 }
 
 // calibra o valor do limiar do LDR
@@ -470,6 +553,13 @@ void animaRgb(){
 
 }
 
+void finalizarLoopTema(){
+    jogo_fim = true;
+
+    player_tema.stop();
+    musica_tema = false;
+}
+
 // função que reseta as variáveis
 void reset(){
     for(int i = 0; i < QTDE_SERVOS; i++){
@@ -488,6 +578,10 @@ void reset(){
     fase_rgb = 0;
     passo_rgb = 0;
     acendeRgb(255, 0, 0);
+
+    player_tema.stop();
+    musica_tema = false;
+    jogo_fim = false;
 
     delay(2000);    // delay para simulação
 }
