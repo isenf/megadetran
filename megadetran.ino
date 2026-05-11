@@ -1,5 +1,6 @@
 #include <VarSpeedServo.h>
 #include <AccelStepper.h>
+
 #include <DFRobotDFPlayerMini.h>
 #include <SoftwareSerial.h>
 
@@ -40,10 +41,10 @@
 
 // objeto do Df e do Serial
 DFRobotDFPlayerMini player_tema;
-SoftwareSerial serial_tema(PIN_RX1, PIN_TX1);
+SoftwareSerial serial_tema(PIN_TX1, PIN_RX1);
 
 DFRobotDFPlayerMini player_efeitos;
-SoftwareSerial serial_efeitos(PIN_RX2, PIN_TX2);
+SoftwareSerial serial_efeitos( PIN_TX2, PIN_RX2);
 
 // variáveis auxiliares para música tema
 bool musica_tema = false;
@@ -184,23 +185,21 @@ void posInicial(){
     }
 }
 
-void initDFPlayer(DFRobotDFPlayerMini &player, SoftwareSerial &serial, int volume, const char* nome){
+void initDFPlayer(DFRobotDFPlayerMini &player, SoftwareSerial &serial, uint8_t volume, const char* nome){
     for(int i = 0; i < 3; i++){
         serial.begin(9600);
-
-        delay(500);
+        player.volume(5);
+        player.begin(serial);
 
         if(player.begin(serial)){
             Serial.print(nome);
             Serial.println(" inicializado com sucesso!");
-            player.volume(volume);
             return;
         }
 
         Serial.print(nome);
         Serial.print(" falhou na tentativa ");
         Serial.println(i + 1);
-        delay(1000);
     }
 
     Serial.print(nome);
