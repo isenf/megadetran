@@ -8,9 +8,10 @@
 #define ASA_ESQ 1
 #define ASA_DIR 2
 #define TRONCO 3
+#define BASE 4
 
 // variáveis constantes
-#define QTDE_LDR 4
+#define QTDE_LDR 5
 #define QTDE_SERVOS 3
 #define MARGEM_LASER 150
 #define LIMIAR_MIN 150
@@ -55,12 +56,12 @@ bool jogo_fim = false;
 0004 - asa */
 
 // ordem: cabeça, asa_esq, asa_dir, tronco
-const int ldrs_pin[] = {A0, A1, A2, A3};
+const int ldrs_pin[] = {A0, A1, A2, A3, A4};
 unsigned long tempo_anterior_ldr = 0;
 
 // variáveis para o brilho dos olhos
 int val_leds = 255;
-int count = 4;
+int count = QTDE_LDR;
 
 // ordem: vermelho, verde, azul (boca)
 const int led_rgb[] = {8, 9, 10};
@@ -311,6 +312,7 @@ void tocarEfeito(int index){
             break;
 
         case TRONCO:
+        case BASE:
             player_efeitos.play(2); // dor
             break;
     }
