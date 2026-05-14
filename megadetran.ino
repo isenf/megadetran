@@ -155,7 +155,7 @@ void setupLdr(LdrConfig &ldr, int pin){
 
 // função para configurar o motor de passo
 void setupStepper(){    // caso haja mais de um: tornar ela genérica
-    troncoMotor.pos_min = 0;
+    troncoMotor.pos_min = -100;
     troncoMotor.pos_max = 100; // 200 passos -> 1 volta
     troncoMotor.pos_inicial = 0;
     troncoMotor.pos_atual = 0;
@@ -165,7 +165,7 @@ void setupStepper(){    // caso haja mais de um: tornar ela genérica
     troncoMotor.tempo_anterior = 0;
     troncoMotor.travado = false;
     troncoMotor.min_to_max = true;
-    troncoMotor.incremento = 50;
+    troncoMotor.incremento = 2;
 
     stepper.setMaxSpeed(troncoMotor.velocidade);
     stepper.setAcceleration(troncoMotor.aceleracao);
@@ -440,7 +440,7 @@ void moverMotorPasso(){ // pode ser tornada genérica
             stepper.move(troncoMotor.incremento);
         }
     } else{
-        if(troncoMotor.pos_atual - troncoMotor.incremento <= troncoMotor.pos_max){
+        if(troncoMotor.pos_atual - troncoMotor.incremento <= troncoMotor.pos_min){
             stepper.moveTo(troncoMotor.pos_max);
             troncoMotor.min_to_max = true;
         } else{
